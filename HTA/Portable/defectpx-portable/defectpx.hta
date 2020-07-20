@@ -1,0 +1,319 @@
+
+<!--
+  DefectPX
+  Version 1.0
+  Copyright (c) 2008-2020 Aurelitec
+  https://www.aurelitec.com/
+-->
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
+
+<head>
+  <title>DefectPX</title>
+  <HTA:APPLICATION id="DefectPX" 
+    applicationname="DefectPX" 
+    border="none"
+    caption="no"
+    icon="/graphics/creature.ico"
+    innerborder="no"
+    scroll="no"
+    showintaskbar="yes"
+    singleinstance="yes"
+    sysmenu="no"
+    windowstate="maximize">
+
+  <style type="text/css">
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: Segoe UI, Arial;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    span, div, p {
+      cursor: default;
+      -moz-user-select:none;
+    }
+
+    a {
+      color: #fff;
+      text-decoration: none;
+    }
+
+    #controlpanel {
+      background: #f0f0f0;
+      height: 240px;
+      left: 100;
+      position: absolute;
+      text-align: left;
+      top: 100;
+      width: 740px;
+    }
+
+    #topadvice {
+      color: #000;
+      margin: 16px 16px 0 16px;
+    }
+
+    #colorsbar {
+      left: 82px;
+      position: absolute;
+      top: 85px;
+    }
+
+    .colorbutton {
+      border: 2px solid #f0f0f0;
+      cursor: pointer;
+      float: left;
+      line-height: 70px;
+      height: 70px;
+      margin-right: 26px;
+      text-align: center;
+      width: 70px;
+    }
+
+    .selectedcolorbutton {
+      font-weight: bold;
+      text-decoration: underline;
+    }
+
+    #statusbar {
+      background: #000;
+      left: 1px;
+      height: 44px;
+      line-height: 44px;
+      overflow: hidden;
+      position: absolute;
+      top: 194px;
+      width: 738px;
+    }
+
+    #programname {
+      cursor: pointer;
+      float: left;
+      font-size: 11pt;
+      font-weight: bold;
+      padding: 0 16px;
+    }
+
+    .commandbutton {
+      border: 2px solid #000;
+      cursor: pointer;
+      padding: 3px;
+      margin-right: 8px;
+    }
+
+    .shorcutkey {
+      background: #444;
+      border: 1px solid #fff;
+      padding: 4px 6px;
+      margin-right: 6px;
+      text-align: center;
+    }
+
+  </style>
+
+  <script type="text/javascript">
+
+    var currentColorIndex = 1;
+
+    /* **************************************************** */
+    /* Program Startup                                      */
+    /* **************************************************** */
+
+    function makeButton(buttonid, onclickevent)
+    {
+      var button = document.getElementById(buttonid);
+      button.onclick = onclickevent;
+      button.onmouseover = selectButtonEvent;
+      button.onmouseout = unselectButtonEvent;
+    }
+
+    function programStart()
+    {
+      // center control panel on screen
+      var controlPanelElement = document.getElementById("controlpanel");
+      controlPanelElement.style.top = ((document.body.clientHeight - controlPanelElement.clientHeight) / 2) + 'px';
+      controlPanelElement.style.left = ((document.body.clientWidth - controlPanelElement.clientWidth) / 2) + 'px';
+
+      // add color buttons
+      for (var i = 1; i <= 6; i++) 
+        makeButton('colorbutton' + i, changeMainColorEvent);
+      
+      currentColorIndex = 1;
+      changeMainColor(1, 1);
+  
+      // assign click events for status bar buttons
+      makeButton('programname', openProgramHome);
+      makeButton('previouscolorbutton', showPreviousColor);
+      makeButton('nextcolorbutton', showNextColor);
+      makeButton('showcontrolpanelbutton', showControlPanel);
+      makeButton('exitbutton', exitProgram);
+      
+      document.onkeydown = hotkeyEvent;
+      document.onmouseup = mouseUpEvent;
+      document.oncontextmenu = function() { return false };
+      document.onselectstart = function() { return false };
+      document.getElementById('colorbutton6').ondblclick = getCustomColor;
+    }
+
+    /* **************************************************** */
+    /* Hotkeys and Mouse Actions                            */
+    /* **************************************************** */
+
+    function selectButtonEvent()
+    {
+        this.style.borderColor = '#3399FF';
+        this.style.borderWidth = '2px';
+    }
+
+    function unselectButtonEvent()
+    {
+      this.style.borderColor = this.style.backgroundColor;
+    }
+    
+    function hotkeyEvent(ev) 
+    {
+      ev = ev || window.event;
+      switch(ev.keyCode) {
+        
+        case 37: showPreviousColor(); break; // left arrow was pressed
+        
+        case 39: showNextColor(); break; // right arrow was pressed
+        case 13: showControlPanel(); break; // enter was pressed
+        case 27: exitProgram(); break; // escape was pressed
+      }
+    
+    }
+    
+    function mouseUpEvent(ev)
+    {
+      ev = ev || window.event;
+      var source = ev.target || ev.srcElement;
+      // if mouse was clicked on the main background area
+      if ((source.tagName == 'HTML') || (source.tagName == 'BODY'))
+      {
+        // Note: thanks to http://unixpapa.com/js/mouse.html
+        // for the mouse button index browser chart
+        if (((!ev.which) && (ev.button == 1)) || (ev.which == 1))
+            showPreviousColor(); // left mouse button was pressed
+        else 
+            if (((!ev.which) && (ev.button == 4)) || (ev.which == 2)) 
+                showControlPanel(); // middle mouse button was pressed
+            else 
+                if (((!ev.which) && (ev.button == 2)) || (ev.which == 3)) 
+                    showNextColor(); // right mouse button was pressed
+      }
+    }
+    
+    /* **************************************************** */
+    /* Main Program Functionality                           */
+    /* **************************************************** */
+
+    function changeMainColorEvent()
+    {
+      var i = parseInt(this.id.charAt(this.id.length - 1));
+      changeMainColor(currentColorIndex, i);
+      currentColorIndex = i;
+    }
+
+    function changeMainColor(oldIndex, newIndex)
+    {
+      document.getElementById('colorbutton' + oldIndex).className = 'colorbutton';
+      var newButton = document.getElementById('colorbutton' + newIndex);
+      document.body.style.background = newButton.style.background;
+      newButton.className = "colorbutton selectedcolorbutton";
+    }
+
+    function getCustomColor(e)
+    {
+      var colorString = document.body.style.backgroundColor;
+      try
+      {
+        // opens the system standard color-selection dialog box (Internet Explorer/Windows)
+        colorString = document.getElementById('dlgHelper').ChooseColorDlg(colorString.replace(/#/, ''));
+      }
+      catch (e)
+      {
+        // if the color-selection dialog box is not available, show a normal input dialog box
+        colorString = window.prompt('Please enter a standard color name or a color code:', colorString);
+      }
+      // set the new custom color
+      if (!colorString) colorString = document.body.style.backgroundColor;
+      document.getElementById('colorbutton6').style.backgroundColor = colorString;
+      changeMainColor(currentColorIndex, currentColorIndex);
+    }
+    
+    function openProgramHome()
+    {
+        window.open('https://www.aurelitec.com/');
+    }
+
+    function showPreviousColor()
+    {
+      var oldColorIndex = currentColorIndex;
+      currentColorIndex = (currentColorIndex > 1) ? currentColorIndex - 1 : 6;
+      changeMainColor(oldColorIndex, currentColorIndex);
+    }
+
+    function showNextColor() 
+    {
+      var oldColorIndex = currentColorIndex;
+      currentColorIndex = (currentColorIndex < 6) ? currentColorIndex + 1 : 1;
+      changeMainColor(oldColorIndex, currentColorIndex);
+    }
+
+    function showControlPanel()
+    {
+      document.getElementById("controlpanel").style.visibility =
+        (document.getElementById("controlpanel").style.visibility == 'hidden') ? 'visible' : 'hidden';
+    }
+
+    function exitProgram()
+    {
+        window.close();
+    }
+  </script>
+
+</head>
+
+<body onload="programStart();">
+  <object id="dlgHelper" classid="clsid:3050f819-98b5-11cf-bb82-00aa00bdce0b" width="0px" height="0px"></object> 
+    
+  <div id="controlpanel">
+    <p id="topadvice">To test for dead or stuck pixels, cycle throgh all the colors below and carefully inspect the screen
+    for pixels that do not match the selected color:</p>
+
+    <div id="colorsbar">
+      <div id="colorbutton1" class="colorbutton" title="Black Screen" style="background: #000; border-color: #000;">Black</div>
+      <div id="colorbutton2" class="colorbutton" title="White Screen" style="background: #fff; border-color: #fff; color: #000;">White</div>
+      <div id="colorbutton3" class="colorbutton" title="Red Screen" style="background: #f00; border-color: #f00;">Red</div>
+      <div id="colorbutton4" class="colorbutton" title="Green Screen" style="background: #0f0; border-color: #0f0;">Green</div>
+      <div id="colorbutton5" class="colorbutton" title="Blue Screen" style="background: #00f; border-color: #00f;">Blue</div>
+      <div id="colorbutton6" class="colorbutton" title="Double-click to select a custom color" style="background: #cccc00; border-color: #cccc00;">Custom</div>
+    </div>
+
+    <div id="statusbar">
+      <span id="programname" title="DefectPX Version 1.0&#13;Copyright (c) 2008-2020 Aurelitec&#13;Click to visit the program's home page for help and more information">DefectPX</span>
+      <span id="previouscolorbutton" class="commandbutton" title="Left Arrow Key or Left Mouse Button Click - Select previous color from list">
+        <span class="shorcutkey">&larr;</span>Previous Color
+      </span>
+      <span id="nextcolorbutton" class="commandbutton" title="Right Arrow Key or Right Mouse Button Click - Select next color from list">
+        <span class="shorcutkey">&rarr;</span>Next Color
+      </span>
+      <span id="showcontrolpanelbutton" class="commandbutton" title="Enter Key or Middle Mouse Button - Show or hide this panel">
+        <span class="shorcutkey">&crarr;</span>Show/Hide This Panel
+      </span>
+      <span id="exitbutton" class="commandbutton" title="Escape Key - Exit the program">
+        <span class="shorcutkey">Esc</span>Exit
+      </span>
+
+    </div>
+  </div>
+</body>
+
+</html>
